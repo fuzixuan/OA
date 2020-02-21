@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.accp.jboa.dao.IEmployeeDao">
+	<select id="queryEmployeeByIdAndPwd" resultType="employeeVo">
+		SELECT employeeId,employeeName,PASSWORD,em.departmentId,em.positionId,pId,STATUS,positionName,departmentName
+		FROM employee em,POSITION p,department de 
+		WHERE em.positionId = p.positionId AND em.departmentId = de.departmentId and
+		employeeId = #{id} and password = #{pwd}
+	</select>
+	
+</mapper>

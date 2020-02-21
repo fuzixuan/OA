@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.accp.jboa.dao.ICheckDao">
+	<insert id="saveCheck">
+		INSERT INTO tb_check(bizId,typeId,checkTime,checkMan,checkResult,checkComment)
+		VALUES(#{check.bizId},#{check.typeId},#{check.checkTime},#{check.checkMan},#{check.checkResult},#{check.checkComment});
+	</insert>
+	
+	<select id="queryCheckList" resultType="checkInfo">
+		SELECT checkId,bizId,typeId,checkTime,checkMan,employeeName checkManName,checkResult,checkComment,resultId,resultName 
+		FROM tb_check c INNER JOIN check_result r ON c.checkResult = r.resultId
+		INNER JOIN employee emp ON c.checkMan = emp.employeeId 
+		WHERE bizId = #{bizId} AND typeId = #{typeId}
+	</select>
+	
+	<select id="queryLastChecker" resultType="checkInfo">
+		SELECT checkId,bizId,typeId,checkTime,checkMan,employeeName checkManName,checkResult,checkComment,resultId,resultName 
+		FROM tb_check c INNER JOIN check_result r ON c.checkResult = r.resultId
+		INNER JOIN employee emp ON c.checkMan = emp.employeeId 
+		WHERE bizId = #{bizId} AND typeId = #{typeId}
+		ORDER BY checkTime DESC LIMIT 0,1;
+	</select>
+</mapper>

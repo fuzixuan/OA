@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.accp.jboa.dao.ILeaveDao">
+	
+	<insert id="saveLeaveInfo">
+		INSERT INTO tb_leave
+		(createMan,departmentId,createTime,startTime,endTime,nextDealMan,EVENT,totalCount,statusId)
+		VALUES(#{leave.createMan},#{leave.departmentId},#{leave.createTime},#{leave.startTime},#{leave.endTime},#{leave.nextDealMan},#{leave.event},#{leave.totalCount},2);
+	</insert>
+	
+	<update id="updateLeaveInfo">
+		update tb_leave
+		<set>
+			<if test="leave.nextDealMan != null">
+				nextDealMan =  #{leave.nextDealMan},
+			</if>
+			<if test="leave.statusId != null">
+				statusId =  #{leave.statusId},
+			</if>
+		</set>
+		where leaveId = #{leave.leaveId};
+		
+	</update>
+	
+	<select id="queryLeaveInfo" resultType="leaveInfo">
+		SELECT leaveId,createMan,employeeName createManName,l.departmentId,departmentName,emp.positionId,positionName,
+		(SELECT checkResult FROM tb_check WHERE typeId = 1 AND bizId = l.leaveId ORDER BY checkTime DESC LIMIT 0,1) resultId,
+		(SELECT checkTime FROM tb_check WHERE typeId = 1 AND bizId = l.leaveId ORDER BY checkTime DESC LIMIT 0,1) checkTime,
+		createTime,startTime,endTime,nextDealMan,EVENT,totalCount,l.statusId,statusName FROM tb_leave l 
+		INNER JOIN employee emp ON l.createMan = emp.employeeId 
+		INNER JOIN department d ON l.departmentId = d.departmentId
+		INNER JOIN POSITION p ON p.positionId = emp.positionId
+		INNER JOIN tb_status s ON l.statusId = s.statusId
+		where leaveId = #{id}
+	</select>
+	
+	<select id="queryLeaveInfoList" resultType="leaveInfo">
+		SELECT leaveId,createMan,employeeName createManName,l.departmentId,departmentName,emp.positionId,positionName,
+		(SELECT checkResult FROM tb_check WHERE typeId = 1 AND bizId = l.leaveId ORDER BY checkTime DESC LIMIT 0,1) resultId,
+		(SELECT checkTime FROM tb_check WHERE typeId = 1 AND bizId = l.leaveId ORDER BY checkTime DESC LIMIT 0,1) checkTime,
+		createTime,startTime,endTime,nextDealMan,
+		(select employeeName from employee emp where emp.employeeId = nextDealMan) nextDealManName,
+		EVENT,totalCount,l.statusId,statusName FROM tb_leave l 
+		INNER JOIN employee emp ON l.createMan = emp.employeeId 
+		INNER JOIN department d ON l.departmentId = d.departmentId
+		INNER JOIN POSITION p ON p.positionId = emp.positionId
+		INNER JOIN tb_status s ON l.statusId = s.statusId
+		<where>
+			<if test="sTime != null">
+				and createTime > #{sTime}
+			</if>
+			<if test="eTime != null">
+				and createTime &lt; #{eTime}
+			</if>
+			<if test="emp.positionId == 2">
+				and createMan = #{emp.employeeId}
+			</if>
+			<if test="emp.positionId == 1">
+				and l.departmentId = #{emp.departmentId} or createMan = #{emp.employeeId}
+			</if>
+			<if test="emp.positionId == 0">
+				and p.positionId != 2
+			</if>
+			<if test="emp.positionId == 3">
+				and createMan = #{emp.employeeId}
+			</if>
+			<if test="emp.positionId == 5">
+				and createMan = #{emp.employeeId}
+			</if>
+		</where>
+		order by createTime desc
+	</select>
+	
+</mapper>

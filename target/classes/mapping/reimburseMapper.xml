@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.accp.jboa.dao.IReimburseDao">
+	<sql id="queryLanguage">
+		SELECT reimburseId,createMan,employeeName createManName,createTime,
+		(SELECT employeeName FROM employee em WHERE em.employeeId = r.nextDealMan) nextDealManName,
+		r.departmentId,d.departmentName,nextDealMan,EVENT,totalCount,r.statusId,statusname
+		FROM tb_reimburse r INNER JOIN employee emp ON r.createMan = emp.employeeId
+		INNER JOIN department d ON r.departmentId = d.departmentId
+		INNER JOIN tb_status s ON r.statusId = s.statusId 
+	</sql>
+
+
+	<select id="queryReimburseVoList" resultType="reimburseVo">
+		<include refid="queryLanguage"></include>
+		<where>
+			<if test="statusId != null">
+				<if test="statusId == 1">
+					and (r.statusId = 1 and createMan = #{emp.employeeId})
+				</if>
+				<if test="statusId != 1">
+					and r.statusId = #{statusId}
+				</if>
+			</if>
+			<if test="statusId == null">
+				<if test="emp.positionId != 2">
+					and r.statusId > 1
+				</if>
+			</if>
+			
+			<if test="sTime != null">
+				and createTime > #{sTime}
+			</if>
+			<if test="eTime != null">
+				and createTime &lt; #{eTime}
+			</if>
+			<!-- 普通职员 -->
+			<if test="emp.positionId == 2">
+				and createMan = #{emp.employeeId}
+			</if>
+			<!-- 人事 -->
+			<if test="emp.positionId == 4">
+				and createMan = #{emp.employeeId}
+			</if>
+			<!-- 部门经理 -->
+			<if test="emp.positionId == 1">
+				and r.departmentId = #{emp.departmentId} and r.statusId > 1 
+				union <include refid="queryLanguage"></include> where createMan = #{emp.employeeId} 
+				<if test="statusId != null">
+					and r.statusId = #{statusId}
+				</if>
+				<if test="sTime != null">
+					and createTime > #{sTime}
+				</if>
+				<if test="eTime != null">
+					and createTime &lt; #{eTime}
+				</if>
+			</if>
+			<!-- 总经理 -->
+			<if test="emp.positionId == 0">
+				and createMan = #{emp.employeeId}  
+				union <include refid="queryLanguage"></include> where createMan = #{emp.employeeId} 
+				<if test="statusId != null">
+					and r.statusId = #{statusId}
+				</if>
+				<if test="sTime != null">
+					and createTime > #{sTime}
+				</if>
+				<if test="eTime != null">
+					and createTime &lt; #{eTime}
+				</if> 
+				union <include refid="queryLanguage"></include> where nextDealMan = #{emp.employeeId} 
+				<if test="statusId != null">
+					<if test="statusId == 1">
+						and r.statusId = #{statusId} and createMan = #{emp.employeeId} 
+					</if>
+					<if test="statusId != 1">
+						and r.statusId = #{statusId} and createMan = #{emp.employeeId} 
+					</if>
+				</if>
+				<if test="sTime != null">
+					and createTime > #{sTime}
+				</if>
+				<if test="eTime != null">
+					and createTime &lt; #{eTime}
+				</if>
+				union <include refid="queryLanguage"></include> where totalCount > 5000 
+				<if test="statusId != null">
+					<if test="statusId == 1">
+						and r.statusId = #{statusId}  and createMan = #{emp.employeeId}
+					</if>
+					<if test="statusId != 1">
+						and r.statusId = #{statusId} 
+					</if>
+				</if>
+				<if test="statusId == null">
+					and r.statusId > 1
+				</if>
+				<if test="sTime != null">
+					and createTime > #{sTime}
+				</if>
+				<if test="eTime != null">
+					and createTime &lt; #{eTime}
+				</if>
+			</if>
+			<!-- 财务 -->
+			<if test="emp.positionId == 3">
+				union <include refid="queryLanguage"></include> where createMan = #{emp.employeeId} 
+				<if test="statusId != null">
+					and r.statusId = #{statusId}
+				</if>
+				<if test="sTime != null">
+					and createTime > #{sTime}
+				</if>
+				<if test="eTime != null">
+					and createTime &lt; #{eTime}
+				</if>
+			</if>
+			<!-- 出纳 -->
+			<if test="emp.positionId == 5">
+				union <include refid="queryLanguage"></include> where createMan = #{emp.employeeId} 
+				<if test="statusId != null">
+					and r.statusId = #{statusId}
+				</if>
+				<if test="sTime != null">
+					and createTime > #{sTime}
+				</if>
+				<if test="eTime != null">
+					and createTime &lt; #{eTime}
+				</if>
+			</if>
+		</where>
+		order by createTime desc
+	</select>
+	
+	<select id="queryAllStatus" resultType="status">
+		select * from tb_status
+	</select>
+	
+	<insert id="saveReimburse" useGeneratedKeys="true" keyProperty="reim.reimburseId">
+		INSERT INTO tb_reimburse(createMan,createTime,departmentId,nextDealMan,EVENT,totalCount,statusId) 
+		VALUES(#{reim.createMan},#{reim.createTime},#{reim.departmentId},#{reim.nextDealMan},#{reim.event},
+		#{reim.totalCount},#{reim.statusId});
+	</insert>
+	
+	<insert id="saveReimburseDetails">
+		INSERT INTO reimburse_detail(mainId,subTotal,`desc`,pictureName,picturePath)
+		VALUES
+		<foreach collection="details" item="temp" separator=",">
+			(#{temp.mainId},#{temp.subTotal},#{temp.desc},#{temp.pictureName},#{temp.picturePath})
+		</foreach>
+		;
+	</insert>
+	
+	<update id="updateReimburse">
+		update tb_reimburse
+		<set>
+			<if test="reim.event != null">
+				event = #{reim.event},
+			</if>
+			<if test="reim.totalCount != null">
+				totalCount = #{reim.totalCount},
+			</if>
+			<if test="reim.statusId != null">
+				statusId = #{reim.statusId},
+			</if>
+			<if test="reim.nextDealMan != null">
+				nextDealMan = #{reim.nextDealMan},
+			</if>
+		</set>
+		where reimburseId = #{reim.reimburseId}
+	</update>
+	
+	<delete id="deleteReimburse">
+		delete from reimburse_detail WHERE mainId = #{id};
+		delete from tb_reimburse where reimburseId = #{id};
+	</delete>
+	
+	
+	<select id="queryReimburseVoById" resultType="reimburseVo">
+		SELECT reimburseId,createMan,employeeName createManName,createTime,
+		(SELECT positionName FROM employee em INNER JOIN POSITION p ON p.positionId = em.positionId WHERE em.employeeId = r.createMan) positionName,
+		(SELECT employeeName FROM employee em WHERE em.employeeId = r.nextDealMan) nextDealManName,
+		r.departmentId,d.departmentName,nextDealMan,EVENT,totalCount,r.statusId,statusname
+		FROM tb_reimburse r INNER JOIN employee emp ON r.createMan = emp.employeeId
+		INNER JOIN department d ON r.departmentId = d.departmentId
+		INNER JOIN tb_status s ON r.statusId = s.statusId
+		WHERE reimburseId = #{id}
+	</select>
+	
+	<select id="queryReimburseDetails" resultType="reimburseDetail">
+		select * from reimburse_detail where mainId = #{id};
+	</select>
+	
+	<update id="updateReimburseDetails">
+		<foreach collection="details" item="temp">
+			update reimburse_detail
+			<set>
+				<if test="temp.subTotal != null">
+					subTotal = #{temp.subTotal},
+				</if>
+				<if test="temp.desc != null">
+					temp.desc = #{temp.temp.desc},
+				</if>
+				<if test="temp.pictureName != null">
+					pictureName = #{temp.pictureName},
+				</if>
+				<if test="temp.picturePath != null">
+					picturePath = #{temp.picturePath},
+				</if>
+			</set>
+			where id = #{temp.id};
+		</foreach>
+	</update>
+	
+	<delete id="deleteReimburseDetails">
+		delete from reimburse_detail where id = #{id};
+	</delete>
+
+</mapper>
